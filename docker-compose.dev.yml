@@ -1,0 +1,63 @@
+# 开发环境配置
+# 使用预构建的 R 基础镜像，加速 Java 代码迭代
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: r-book-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: r_book
+      MYSQL_USER: r_book_user
+      MYSQL_PASSWORD: r_book_pass
+      TZ: Asia/Shanghai
+      LANG: C.UTF-8
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docs/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+      - --init-connect=SET NAMES utf8mb4
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - r-book-network
+
+  r-book-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: r-book-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/r_book?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root123456
+      APP_CODERUNNER_SCRIPT_STORAGE_PATH: /app/scripts
+      APP_CODERUNNER_R_EXECUTABLE: Rscript
+      APP_CODERUNNER_TIMEOUT_SECONDS: 60
+    volumes:
+      # 开发时直接挂载本地脚本目录，修改 R 脚本无需重启
+      - ./scripts:/app/scripts
+    networks:
+      - r-book-network
+
+networks:
+  r-book-network:
+    driver: bridge
+
+volumes:
+  mysql_data:

@@ -1,0 +1,81 @@
+services:
+  # =============================================
+  # MySQL 数据库
+  # =============================================
+  mysql:
+    image: mysql:8.0
+    container_name: r-book-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: r_book
+      MYSQL_USER: r_book_user
+      MYSQL_PASSWORD: r_book_pass
+      TZ: Asia/Shanghai
+      LANG: C.UTF-8
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docs/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+      - --init-connect=SET NAMES utf8mb4
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - r-book-network
+
+  # =============================================
+  # R-Book 应用
+  # =============================================
+  r-book-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: r-book-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      # 数据库配置
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/r_book?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: r_book_user
+      SPRING_DATASOURCE_PASSWORD: r_book_pass
+      # JPA 配置
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      # 应用配置
+      APP_CODERUNNER_SCRIPT_STORAGE_PATH: /app/scripts
+      APP_CODERUNNER_R_EXECUTABLE: Rscript
+      APP_CODERUNNER_TIMEOUT_SECONDS: 60
+      # JVM 配置
+      JAVA_OPTS: -Xms256m -Xmx512m
+    volumes:
+      # 持久化脚本目录（可选，方便动态添加脚本）
+      - r_scripts:/app/scripts
+    networks:
+      - r-book-network
+
+# =============================================
+# 数据卷
+# =============================================
+volumes:
+  mysql_data:
+    driver: local
+  r_scripts:
+    driver: local
+
+# =============================================
+# 网络
+# =============================================
+networks:
+  r-book-network:
+    driver: bridge

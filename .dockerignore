@@ -1,0 +1,38 @@
+# 忽略构建产物
+target/
+!target/*.jar
+
+# 忽略 IDE 文件
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# 忽略 Git 相关
+.git/
+.gitignore
+
+# 忽略日志和临时文件
+logs/
+*.log
+tmp/
+temp/
+
+# 忽略本地配置
+application-local.properties
+application-local.yml
+*.env
+
+# 忽略文档
+docs/
+*.md
+!README.md
+
+# 忽略测试数据
+src/test/
+
+# 忽略 Maven wrapper（使用 Docker 内的 Maven）
+.mvn/
+mvnw
+mvnw.cmd

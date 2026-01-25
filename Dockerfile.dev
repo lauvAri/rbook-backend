@@ -1,0 +1,24 @@
+# =============================================
+# R-Book 应用镜像 (开发用，快速构建)
+# 基于预构建的 R 基础镜像，直接复制本地 JAR
+# =============================================
+# 使用前请先在本地构建: ./mvnw clean package -DskipTests
+# =============================================
+
+FROM r-book-base:latest
+
+WORKDIR /app
+
+# 直接复制本地构建好的 JAR 和脚本
+COPY target/*.jar app.jar
+COPY scripts/*.R /app/scripts/
+
+RUN mkdir -p /app/scripts && chmod -R 755 /app/scripts
+
+EXPOSE 8080
+
+ENV JAVA_OPTS="-Xms256m -Xmx512m"
+ENV APP_CODERUNNER_SCRIPT_STORAGE_PATH=/app/scripts
+ENV APP_CODERUNNER_R_EXECUTABLE=Rscript
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

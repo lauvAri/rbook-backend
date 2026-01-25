@@ -1,0 +1,7 @@
+E07_01 <- read.csv(input_file) 
+Table <- table( E07_01$group, E07_01$x )
+print("=== 频数统计表 ===")
+print(Table)
+test_result <- chisq.test( Table, correct = FALSE)
+print("=== 卡方检验结果 ===")
+print(test_result)

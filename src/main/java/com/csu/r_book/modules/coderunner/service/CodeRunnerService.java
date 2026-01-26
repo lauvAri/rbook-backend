@@ -71,4 +71,36 @@ public interface CodeRunnerService {
      * @return 章节列表（含脚本数量）
      */
     List<ChapterDTO> getAllChapters();
+
+    /**
+     * 获取章节列表（管理端）
+     *
+     * @return 章节管理列表
+     */
+    List<ChapterAdminDTO> getAllChaptersForAdmin();
+
+    /**
+     * 创建章节
+     *
+     * @param createDTO 创建请求
+     * @return 创建后的章节
+     */
+    ChapterAdminDTO createChapter(ChapterCreateDTO createDTO);
+
+    /**
+     * 更新章节
+     *
+     * @param id 章节ID
+     * @param updateDTO 更新请求
+     * @return 更新后的章节
+     */
+    ChapterAdminDTO updateChapter(Long id, ChapterUpdateDTO updateDTO);
+
+    /**
+     * 删除章节（逻辑删除）
+     *
+     * @param id 章节ID
+     * @return 是否删除成功
+     */
+    boolean deleteChapter(Long id);
 }

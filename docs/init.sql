@@ -27,7 +27,20 @@ CREATE TABLE IF NOT EXISTS `cr_user_logs` (
   KEY `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户操作日志表';
 
--- 3. 脚本主表
+-- 3. 章节表
+CREATE TABLE IF NOT EXISTS `cr_chapters` (
+  `id` BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '章节ID',
+  `name` VARCHAR(100) NOT NULL COMMENT '章节名称',
+  `sort_order` INT(11) DEFAULT 0 COMMENT '排序顺序',
+  `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标记',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_chapter_name` (`name`),
+  KEY `idx_chapter_sort` (`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='章节表';
+
+-- 4. 脚本主表
 CREATE TABLE IF NOT EXISTS `cr_scripts` (
   `id` VARCHAR(64) NOT NULL COMMENT '脚本业务ID',
   `name` VARCHAR(100) NOT NULL COMMENT '脚本名称',
@@ -47,7 +60,7 @@ CREATE TABLE IF NOT EXISTS `cr_scripts` (
   KEY `idx_chapter_sort` (`chapter`, `sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='R脚本定义表';
 
--- 4. 脚本变量表
+-- 5. 脚本变量表
 CREATE TABLE IF NOT EXISTS `cr_script_variables` (
   `id` BIGINT(20) NOT NULL AUTO_INCREMENT,
   `script_id` VARCHAR(64) NOT NULL COMMENT '关联脚本ID',
@@ -61,7 +74,7 @@ CREATE TABLE IF NOT EXISTS `cr_script_variables` (
   KEY `idx_script_id` (`script_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='脚本变量配置表';
 
--- 5. 执行日志表
+-- 6. 执行日志表
 CREATE TABLE IF NOT EXISTS `cr_execution_logs` (
   `id` BIGINT(20) NOT NULL AUTO_INCREMENT,
   `script_id` VARCHAR(64) NOT NULL,
@@ -85,6 +98,13 @@ CREATE TABLE IF NOT EXISTS `cr_execution_logs` (
 -- 用户名: admin，密码: admin123
 
 -- 演示脚本数据
+INSERT INTO `cr_chapters` (`name`, `sort_order`, `is_deleted`)
+VALUES
+('第一章 描述性统计', 1, 0),
+('第二章 回归分析', 2, 0),
+('第三章 假设检验', 3, 0)
+ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `sort_order` = VALUES(`sort_order`), `is_deleted` = VALUES(`is_deleted`);
+
 INSERT INTO `cr_scripts` (`id`, `name`, `description`, `file_path`, `chapter`, `sort_order`, `supports_variables`, `supports_file_input`, `file_input_desc`, `example_data`) 
 VALUES 
 ('basic-stats', '基础统计分析', '计算数据的基本统计量', 'basic_stats.R', '第一章 描述性统计', 1, 0, 1, '请上传包含数值数据的 CSV 文件', 'value\n23\n45\n67\n89\n12\n34\n56\n78\n90\n21'),

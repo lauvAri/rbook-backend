@@ -6,26 +6,19 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 章节信息 DTO
+ * 章节管理 DTO
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ChapterDTO {
-    
-    /**
-     * 章节名称
-     */
-    private String name;
-    
-    /**
-     * 该章节下的脚本数量
-     */
-    private long scriptCount;
+public class ChapterAdminDTO {
 
-    /**
-     * 排序顺序
-     */
+    private Long id;
+
+    private String name;
+
     private Integer sortOrder;
+
+    private long scriptCount;
 }

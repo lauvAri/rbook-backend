@@ -3,9 +3,11 @@ package com.csu.r_book.modules.coderunner.service.impl;
 import com.csu.r_book.modules.coderunner.component.RScriptExecutor;
 import com.csu.r_book.modules.coderunner.config.CodeRunnerProperties;
 import com.csu.r_book.modules.coderunner.model.dto.*;
+import com.csu.r_book.modules.coderunner.model.entity.ChapterEntity;
 import com.csu.r_book.modules.coderunner.model.entity.ExecutionLogEntity;
 import com.csu.r_book.modules.coderunner.model.entity.RScriptEntity;
 import com.csu.r_book.modules.coderunner.model.entity.ScriptVariableEntity;
+import com.csu.r_book.modules.coderunner.repository.ChapterRepository;
 import com.csu.r_book.modules.coderunner.repository.ExecutionLogRepository;
 import com.csu.r_book.modules.coderunner.repository.RScriptRepository;
 import com.csu.r_book.modules.coderunner.repository.ScriptVariableRepository;
@@ -43,6 +45,7 @@ public class CodeRunnerServiceImpl implements CodeRunnerService {
     private final RScriptRepository scriptRepository;
     private final ScriptVariableRepository variableRepository;
     private final ExecutionLogRepository logRepository;
+    private final ChapterRepository chapterRepository;
     private final RScriptExecutor rScriptExecutor;
     private final ObjectMapper objectMapper;
     private final CodeRunnerProperties properties;
@@ -261,6 +264,7 @@ public class CodeRunnerServiceImpl implements CodeRunnerService {
     @Override
     @Transactional
     public ScriptDefinitionDTO createScript(ScriptCreateDTO createDTO) {
+        validateChapterExists(createDTO.getChapter());
         // 1. 生成唯一ID
         String scriptId = generateScriptId();
         log.info("Creating script with generated id: {}", scriptId);
@@ -340,6 +344,7 @@ public class CodeRunnerServiceImpl implements CodeRunnerService {
             entity.setExampleData(updateDTO.getExampleData());
         }
         if (updateDTO.getChapter() != null) {
+            validateChapterExists(updateDTO.getChapter());
             entity.setChapter(updateDTO.getChapter());
         }
         if (updateDTO.getSortOrder() != null) {
@@ -472,12 +477,111 @@ public class CodeRunnerServiceImpl implements CodeRunnerService {
     
     @Override
     public List<ChapterDTO> getAllChapters() {
-        List<String> chapters = scriptRepository.findDistinctChapters();
+        List<ChapterEntity> chapters = chapterRepository.findByIsDeletedOrderBySortOrderAscIdAsc(0);
         return chapters.stream()
-                .map(chapter -> ChapterDTO.builder()
-                        .name(chapter)
-                        .scriptCount(scriptRepository.countByChapter(chapter))
-                        .build())
+                .map(this::toChapterDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ChapterAdminDTO> getAllChaptersForAdmin() {
+        List<ChapterEntity> chapters = chapterRepository.findByIsDeletedOrderBySortOrderAscIdAsc(0);
+        return chapters.stream()
+                .map(this::toChapterAdminDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public ChapterAdminDTO createChapter(ChapterCreateDTO createDTO) {
+        String name = createDTO.getName();
+        if (!StringUtils.hasText(name)) {
+            throw new IllegalArgumentException("章节名称不能为空");
+        }
+
+        Optional<ChapterEntity> existing = chapterRepository.findByName(name);
+        if (existing.isPresent()) {
+            ChapterEntity existingEntity = existing.get();
+            if (existingEntity.getIsDeleted() != null && existingEntity.getIsDeleted() == 1) {
+                existingEntity.setIsDeleted(0);
+                if (createDTO.getSortOrder() != null) {
+                    existingEntity.setSortOrder(createDTO.getSortOrder());
+                }
+                ChapterEntity saved = chapterRepository.save(existingEntity);
+                return toChapterAdminDTO(saved);
+            }
+            throw new IllegalArgumentException("章节已存在: " + name);
+        }
+
+        ChapterEntity entity = new ChapterEntity();
+        entity.setName(name);
+        entity.setSortOrder(createDTO.getSortOrder() != null ? createDTO.getSortOrder() : 0);
+        ChapterEntity saved = chapterRepository.save(entity);
+        return toChapterAdminDTO(saved);
+    }
+
+    @Override
+    @Transactional
+    public ChapterAdminDTO updateChapter(Long id, ChapterUpdateDTO updateDTO) {
+        ChapterEntity entity = chapterRepository.findByIdAndIsDeleted(id, 0)
+                .orElseThrow(() -> new IllegalArgumentException("章节不存在: " + id));
+
+        if (updateDTO.getName() != null) {
+            String newName = updateDTO.getName();
+            if (!StringUtils.hasText(newName)) {
+                throw new IllegalArgumentException("章节名称不能为空");
+            }
+            Optional<ChapterEntity> existing = chapterRepository.findByName(newName);
+            if (existing.isPresent() && !existing.get().getId().equals(entity.getId())) {
+                throw new IllegalArgumentException("章节名称已存在: " + newName);
+            }
+            entity.setName(newName);
+        }
+        if (updateDTO.getSortOrder() != null) {
+            entity.setSortOrder(updateDTO.getSortOrder());
+        }
+
+        ChapterEntity saved = chapterRepository.save(entity);
+        return toChapterAdminDTO(saved);
+    }
+
+    @Override
+    @Transactional
+    public boolean deleteChapter(Long id) {
+        Optional<ChapterEntity> chapterOpt = chapterRepository.findByIdAndIsDeleted(id, 0);
+        if (chapterOpt.isEmpty()) {
+            return false;
+        }
+
+        ChapterEntity entity = chapterOpt.get();
+        entity.setIsDeleted(1);
+        chapterRepository.save(entity);
+        return true;
+    }
+
+    private ChapterDTO toChapterDTO(ChapterEntity entity) {
+        return ChapterDTO.builder()
+                .name(entity.getName())
+                .scriptCount(scriptRepository.countByChapter(entity.getName()))
+                .sortOrder(entity.getSortOrder())
+                .build();
+    }
+
+    private ChapterAdminDTO toChapterAdminDTO(ChapterEntity entity) {
+        return ChapterAdminDTO.builder()
+                .id(entity.getId())
+                .name(entity.getName())
+                .sortOrder(entity.getSortOrder())
+                .scriptCount(scriptRepository.countByChapter(entity.getName()))
+                .build();
+    }
+
+    private void validateChapterExists(String chapter) {
+        if (!StringUtils.hasText(chapter)) {
+            return;
+        }
+        if (chapterRepository.findByNameAndIsDeleted(chapter, 0).isEmpty()) {
+            throw new IllegalArgumentException("章节不存在: " + chapter);
+        }
     }
 }

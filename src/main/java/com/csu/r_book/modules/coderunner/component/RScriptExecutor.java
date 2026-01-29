@@ -17,6 +17,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * R 脚本执行器
@@ -287,7 +289,7 @@ public class RScriptExecutor {
 
             // 3.2 注入固定环境变量
             wrapperCode.append("input_file <- \"data.csv\"\n");
-            wrapperCode.append("output_image <- \"plot.png\"\n");
+            wrapperCode.append("output_image <- \"plot_%03d.png\"\n");
 
             // 3.3 设置图片捕获 (R语言绘图重定向)
             wrapperCode.append("png(output_image, width=800, height=600)\n");
@@ -346,18 +348,25 @@ public class RScriptExecutor {
                         .build());
             }
 
-            // 5.3 读取图片 (如果生成了的话)
-            Path imagePath = workDir.resolve("plot.png");
-            if (Files.exists(imagePath) && Files.size(imagePath) > 0) {
+            // 5.3 读取图片 (支持多张)
+            List<Path> imagePaths = listOutputImages(workDir);
+            for (int i = 0; i < imagePaths.size(); i++) {
+                Path imagePath = imagePaths.get(i);
+                if (Files.size(imagePath) == 0) {
+                    continue;
+                }
                 byte[] imgBytes = Files.readAllBytes(imagePath);
                 String base64 = Base64.getEncoder().encodeToString(imgBytes);
+                String caption = imagePaths.size() == 1 ? "Result Plot" : "Result Plot " + (i + 1);
                 outputs.add(ExecutionResultDTO.OutputItem.builder()
                         .type("image")
                         .data(base64)
                         .format("png")
-                        .caption("Result Plot")
+                        .caption(caption)
                         .build());
-                log.info("Generated image output");
+            }
+            if (!imagePaths.isEmpty()) {
+                log.info("Generated {} image outputs", imagePaths.size());
             }
 
             // 6. 判断 R 脚本是否报错 (通过 exit code)
@@ -464,6 +473,21 @@ public class RScriptExecutor {
         }
         // 转义双引号和反斜杠
         return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    /**
+     * 获取输出图片列表 (plot_*.png 或 plot.png)
+     */
+    private List<Path> listOutputImages(Path workDir) throws IOException {
+        try (Stream<Path> stream = Files.list(workDir)) {
+            return stream
+                    .filter(path -> {
+                        String name = path.getFileName().toString();
+                        return name.endsWith(".png") && (name.equals("plot.png") || name.startsWith("plot_"));
+                    })
+                    .sorted(Comparator.comparing(path -> path.getFileName().toString()))
+                    .collect(Collectors.toList());
+        }
     }
 
     /**

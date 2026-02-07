@@ -113,9 +113,9 @@ public class AuthInterceptor implements HandlerInterceptor {
         }
         
         // 脚本管理接口
-        if (uri.startsWith("/api/code-runner/admin/")) {
-            return true;
-        }
+        // if (uri.startsWith("/api/code-runner/admin/")) {
+        //     return true;
+        // }
         
         return false;
     }

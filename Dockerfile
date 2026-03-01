@@ -106,7 +106,7 @@ RUN fc-cache -fv
 # =============================================
 RUN R --vanilla --slave -e "\
 packages <- c('jsonlite', 'ggplot2', 'dplyr', 'tidyr', 'scales', 'RColorBrewer', 'showtext'); \
-mirrors <- c('https://mirrors.tuna.tsinghua.edu.cn/CRAN/', 'https://cloud.r-project.org/', 'https://cran.r-project.org/'); \
+mirrors <- c('https://cloud.r-project.org/', 'https://cran.r-project.org/'); \
 for (pkg in packages) { \
   installed <- FALSE; \
   for (mirror in mirrors) { \

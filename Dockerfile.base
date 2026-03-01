@@ -43,13 +43,17 @@ RUN fc-cache -fv
 
 # 安装 R 包（最耗时的部分，放在基础镜像里）
 RUN R --vanilla --slave -e "\
-options(repos = c(CRAN = 'https://mirrors.tuna.tsinghua.edu.cn/CRAN/')); \
+options(repos = c(CRAN = 'https://mirrors.aliyun.com/CRAN/')); \
+options(download.file.method = 'wget'); \
 packages <- c('jsonlite', 'ggplot2', 'dplyr', 'tidyr', 'scales', 'RColorBrewer', 'showtext'); \
-for (pkg in packages) { \
-  cat(sprintf('Installing %s...\\n', pkg)); \
-  install.packages(pkg, dependencies = TRUE, quiet = TRUE); \
-}; \
-cat('All packages installed\\n'); \
+install.packages(packages, dependencies = TRUE, quiet = FALSE); \
+installed <- installed.packages()[, 'Package']; \
+missing <- setdiff(packages, installed); \
+if (length(missing) > 0) { \
+    cat('以下包安装失败:', missing, '\\n'); \
+    quit(status = 1); \
+} else { \
+    cat('所有包安装成功！\\n'); \
+}\
 "
-
 WORKDIR /app
